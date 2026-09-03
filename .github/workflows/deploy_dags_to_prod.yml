@@ -1,0 +1,70 @@
+name: Build Docker, push to S3 & Dispatch
+
+on:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  push_to_ecr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          
+          role-to-assume: ${{secrets.AWS_ROLE}}
+          
+          aws-region: eu-central-1
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE_NAME=$(python -c "import tomli; data=tomli.loads(open('pyproject.toml','r').read()); print(data['project']['name']).lower()")
+          VERSION=$(python -c "import tomli; data=tomli.loads(open('pyproject.toml','r').read()); print(data['project']['version'])")
+          
+          REPO_URI=${{ secrets.REPO_URI }}/$IMAGE_NAME
+          
+          
+          # Create the repository if it doesn't exist
+          aws ecr describe-repositories --repository-names "$IMAGE_NAME" \
+          || aws ecr create-repository --repository-name "$IMAGE_NAME"
+          
+          docker build -t $REPO_URI:VERSION .
+          docker push $REPO_URI:VERSION
+  push_to_s3:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          
+          role-to-assume: ${{secrets.AWS_ROLE}}
+          
+          aws-region: eu-central-1
+
+      - name: Upload DAGs to S3 using repo name as folder
+        run: |
+          REPO_NAME=$(echo "${GITHUB_REPOSITORY}" | cut -d'/' -f2)
+          aws s3 sync dags/ s3://airflow-dags-bc/${REPO_NAME}/dags/ --delete
+
+      - name: Dispatch to CDR
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          
+          token: ${{ secrets.CDR_PAT }}
+          
+          repository: bcdev/airflow-dags
+          event-type: dag-updated
