@@ -7,88 +7,25 @@ name = "mlops_lulc"
 authors = [
     {name = "sandro", email = "sandrosena@alumni.usp.br"},
 ]
-description = """\
-    A short description of the project
-    """
-keywords = [
-    "your",
-    "keywords",
-    "here",
-]
+description = "MLOps para classificação de uso e cobertura da terra com SITS e Brazil Data Cube"
 version = "0.0.1"
 readme = { file = "README.md", content-type = "text/markdown" }
-license = { file = "LICENSE", content-type = "text/plain" }
-requires-python = ">=3.10"
-classifiers = [
-  # Find the list of all classifiers here: https://pypi.org/classifiers/
-  # How mature is this project? Common values are
-  #   3 - Alpha
-  #   4 - Beta
-  #   5 - Production/Stable
-  "Development Status :: 3 - Alpha",
-
-  # Indicate who your project is intended for
-  "Intended Audience :: Developers",
-  "Topic :: Software Development :: Build Tools",
-
-  # Specify the Python versions you support here.
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-]
-
-# TODO: Update these dependencies
+requires-python = ">=3.10,<3.13"
 dependencies = [
-    
-    "keras",
-    "tensorflow",
-    "numpy==2.0.2",
-    
-]
-
-# TODO: Update the dependencies to be excluded
-[tool.setuptools.packages.find]
-exclude = [
-    "test",
-    "extra",
-    "lint",
-]
-
-# TODO: Update these dependencies
-[project.optional-dependencies]
-extra = []
-dev = [
+    "pandas",
+    "geopandas",
+    "rasterio",
+    "numpy",
+    "matplotlib",
+    "seaborn",
     "mlflow",
-    "psycopg2-binary",
-    "boto3",
-    "apache-airflow",
-    "apache-airflow-providers-cncf-kubernetes",
-    "jupyter",
     "python-dotenv",
-    "fsspec",
-    "twine",
-    "build",
-]
-test = [
-    "pytest",
-    "pytest-cov",
-]
-lint = [
-    "ruff",
-    "jupyterlab-black",
+    "pysits",
 ]
 
-# TODO: Update these parameters
-[project.urls]
-Homepage = "Update your homepage here"
-Repository = "Update your repository here"
+[tool.setuptools.packages.find]
+exclude = ["notebooks", "data"]
 
+[tool.ruff]
+line-length = 100
 
-[tool.pytest.ini_options]
-pythonpath = ["."]
-# You can remove these filters if required.
-filterwarnings = [
-  "ignore::DeprecationWarning",
-  "ignore::UserWarning",
-  "ignore::RuntimeWarning"
-]
