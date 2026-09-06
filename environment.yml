@@ -2,31 +2,42 @@ name: mlops_lulc
 channels:
   - conda-forge
 dependencies:
-  # required for mlops framework
-  - python >3.10,<3.13
+  - "python >3.10,<3.13"
   - mlflow
-  - apache-airflow
-  - psycopg2-binary
-  - asyncpg
   - jupyter
   - python-dotenv
   - git
-  - fsspec
   - typer
-  
-  # This is only needed for the examples. If you don't need this, please feel free to remove it.
-  - keras
-  - tensorflow
+
+  # SITS (satellite image time series) — wrapper Python sobre R
+  - r-base>=4.2
+  - r-sits
+  - r-arrow
+  - r-kohonen
+  - r-leaflet
+  - r-sf
+  - r-htmlwidgets
+  - r-tibble
+  - r-caret
+  - r-torch
+  - r-ggplot2
+  - gdal
+  - proj
+
+  # manipulacao geoespacial e analise de dados
+  - geopandas
+  - rasterio
+  - pandas
+  - matplotlib
+  - seaborn
   - numpy =2.0.2
-  
+
   # Testing
   - pytest-cov
   - pytest
   # Linting
   - ruff
   - isort
-  # add your libraries here
   - pip
   - pip:
-      - boto3
-
+      - pysits

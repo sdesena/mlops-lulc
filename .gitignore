@@ -168,3 +168,13 @@ mlruns/
 .example*
 
 .env
+/data
+# MLflow artifacts
+mlflow_data/
+
+# dados brutos TerraClass
+data/*.zip
+data/CER.2024.*
+
+# checkpoints do Jupyter
+.ipynb_checkpoints/
