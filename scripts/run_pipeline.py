@@ -31,6 +31,24 @@ from pysits import (
 
 LOG = logging.getLogger("mlops_lulc")
 
+TERRA_CLASS_COLORS = {
+    "VEGETACAO_NATURAL_PRIMARIA": "#005500",
+    "VEGETACAO_NATURAL_SECUNDARIA": "#0FC80F",
+    "SILVICULTURA": "#A8A800",
+    "PASTAGEM": "#FFEC87",
+    "CULTURA_AGRICOLA_PERENE": "#FF8828",
+    "CULTURA_AGRICOLA_SEMIPERENE": "#996400",
+    "CULTURA_AGRICOLA_TEMPORARIA_DE_1_CICLO": "#FFE300",
+    "CULTURA_AGRICOLA_TEMPORARIA_DE_MAIS_DE_1_CICLO": "#FFFF00",
+    "MINERACAO": "#AD89CD",
+    "URBANIZADA": "#FFA8C0",
+    "OUTROS_USOS": "#E1E1E1",
+    "OUTRAS_AREAS_EDIFICADAS": "#FF00C5",
+    "DESFLORESTAMENTO_NO_ANO": "#FF0000",
+    "CORPO_DAGUA": "#0000FF",
+    "NAO_OBSERVADO": "#FFFFFF",
+}
+
 
 def parse_args() -> argparse.Namespace:
     # Define e faz o parsing de todos os argumentos de linha de comando do experimento
@@ -88,18 +106,23 @@ def save_series_plot(time_series: pd.DataFrame, path: Path) -> None:
 
 
 def save_sample_map(gdf: gpd.GeoDataFrame, samples: pd.DataFrame, path: Path) -> None:
-    # Gera um mapa mostrando os contornos dos polígonos da área de estudo
-    # sobrepostos com os pontos de amostra extraídos
+    # Gera um mapa colorido (paleta oficial do TerraClass) dos polígonos da área de estudo
+    # sobrepostos com os pontos de amostra extraídos, em preto para contraste com qualquer cor de fundo
     figure, axis = plt.subplots(figsize=(8, 8))
-    gdf.boundary.plot(ax=axis, linewidth=0.4, color="0.5")
-    axis.scatter(samples["longitude"], samples["latitude"], s=8, alpha=0.7)
+    for classe, group in gdf.groupby("CLASSE"):
+        color = TERRA_CLASS_COLORS.get(classe, "#CCCCCC")  # cinza como fallback para classes fora do dicionário
+        group.plot(ax=axis, color=color, edgecolor="0.3", linewidth=0.3, label=classe)
+    axis.scatter(
+        samples["longitude"], samples["latitude"],
+        s=25, marker="x", color="black", linewidths=1.5, zorder=5,
+    )
     axis.set_title("Amostras TerraClass na ROI")
     axis.set_xlabel("Longitude")
     axis.set_ylabel("Latitude")
+    axis.legend(loc="upper left", bbox_to_anchor=(1.02, 1), fontsize=8, title="Classe")
     figure.tight_layout()
-    figure.savefig(path, dpi=150)
+    figure.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(figure)
-
 
 def parse_kfold_metrics(result: object) -> dict[str, float]:
     # Extrai métricas (Accuracy, Kappa) do resultado de sits_kfold_validate via regex,
@@ -193,7 +216,7 @@ def main() -> None:
             start_date=args.start_date,
             end_date=args.end_date,
             roi=roi,
-            multicores=1,  # >1 core historicamente estourou a memória do WSL2 nesta máquina
+            multicores=2,  # >1 core historicamente estourou a memória do WSL2 nesta máquina
         )
         timeline = sits_timeline(cube)
         LOG.info("Timeline: %s", timeline)
@@ -201,7 +224,7 @@ def main() -> None:
 
         # ---- Extração das séries temporais nos pontos amostrados a partir do cubo ----
         extraction_started = time.perf_counter()
-        time_series = sits_get_data(cube=cube, samples=samples, multicores=1)
+        time_series = sits_get_data(cube=cube, samples=samples, multicores=2)
         save_series_plot(time_series, output_dir / "time_series.png")
         time_series[["longitude", "latitude", "label", "start_date", "end_date"]].to_csv(
             output_dir / "time_series_metadata.csv", index=False
@@ -214,7 +237,7 @@ def main() -> None:
             samples=time_series,
             folds=args.folds,
             ml_method=sits_rfor(num_trees=args.num_trees),
-            multicores=1,
+            multicores=2,
         )
         (output_dir / "kfold_result.txt").write_text(str(kfold), encoding="utf-8")
         LOG.info("Validação retornou %s", type(kfold))
@@ -274,14 +297,14 @@ def main() -> None:
                 data=cube,
                 ml_model=model,
                 output_dir=str(output_dir / "probs"),
-                multicores=1,
-                memsize=1,  # classifica todo o cubo (todos os pixels da ROI); mantém baixo para não travar o WSL2
+                multicores=2,
+                memsize=2,  # classifica todo o cubo (todos os pixels da ROI); mantém baixo para não travar o WSL2
                 progress=True,
             )
             bayes_cube = sits_smooth(
                 cube=probs_cube,
                 output_dir=str(output_dir / "bayes"),
-                multicores=1,
+                multicores=2,
                 progress=True,
             )
             label_cube = sits_label_classification(
