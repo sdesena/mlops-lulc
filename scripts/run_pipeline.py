@@ -202,10 +202,11 @@ def main() -> None:
     mlflow.set_tracking_uri(args.tracking_uri)
     mlflow.set_experiment(args.experiment)
     with mlflow.start_run(run_name=args.run_name) as run:
-        # Registra metadados, parâmetros e os arquivos de entrada/preparação já gerados
+        # Registra metadados, parâmetros e os artefatos de preparação já gerados (protege contra falhas nas próximas etapas)
         mlflow.set_tags({"project": "mlops-lulc", "region": "balsas-ma", "reference": "terraclass-2024"})
         mlflow.log_params({**config, "bands": ",".join(args.bands), "roi": json.dumps(roi)})
-        mlflow.log_artifacts(str(output_dir), artifact_path="inputs")
+        for artifact_name in ("config.json", "samples.csv", "study_area.geojson", "class_distribution.csv", "samples_map.png"):
+            mlflow.log_artifact(str(output_dir / artifact_name), artifact_path="inputs")
 
         # ---- Construção do cubo de dados (SITS) a partir da coleção Sentinel-2 no BDC ----
         cube_started = time.perf_counter()
@@ -216,7 +217,7 @@ def main() -> None:
             start_date=args.start_date,
             end_date=args.end_date,
             roi=roi,
-            multicores=2,  # >1 core historicamente estourou a memória do WSL2 nesta máquina
+            multicores=3,
         )
         timeline = sits_timeline(cube)
         LOG.info("Timeline: %s", timeline)
@@ -224,11 +225,13 @@ def main() -> None:
 
         # ---- Extração das séries temporais nos pontos amostrados a partir do cubo ----
         extraction_started = time.perf_counter()
-        time_series = sits_get_data(cube=cube, samples=samples, multicores=2)
+        time_series = sits_get_data(cube=cube, samples=samples, multicores=3)
         save_series_plot(time_series, output_dir / "time_series.png")
         time_series[["longitude", "latitude", "label", "start_date", "end_date"]].to_csv(
             output_dir / "time_series_metadata.csv", index=False
         )
+        mlflow.log_artifact(str(output_dir / "time_series.png"), artifact_path="inputs")
+        mlflow.log_artifact(str(output_dir / "time_series_metadata.csv"), artifact_path="inputs")
         extraction_seconds = time.perf_counter() - extraction_started
 
         # ---- Validação cruzada (k-fold) do modelo Random Forest sobre as séries temporais ----
@@ -237,7 +240,7 @@ def main() -> None:
             samples=time_series,
             folds=args.folds,
             ml_method=sits_rfor(num_trees=args.num_trees),
-            multicores=2,
+            multicores=3,
         )
         (output_dir / "kfold_result.txt").write_text(str(kfold), encoding="utf-8")
         LOG.info("Validação retornou %s", type(kfold))
@@ -289,7 +292,6 @@ def main() -> None:
             }
         )
         mlflow.log_artifact(str(output_dir / "run_summary.json"), artifact_path="metrics")
-        mlflow.log_artifacts(str(output_dir), artifact_path="artifacts")  # loga novamente tudo o que está em output_dir, já incluindo os arquivos gerados até aqui
 
         # ---- Etapa opcional: classificação completa do cubo (probabilidades -> suavização Bayesiana -> rotulação) ----
         if args.run_classification:
