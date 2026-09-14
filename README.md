@@ -117,8 +117,8 @@ A configuração padrão do notebook está reduzida (1 banda, 6 meses, 1 core) p
 
 ## Roadmap
 
-- [x] Infra mínima: mamba (R+sits+pysits) + MLflow via Docker Compose
-- [x] Pipeline exploratório no notebook: amostras TerraClass → cubo BDC → treino → classificação
+- [ ] Infra mínima: mamba (R+sits+pysits) + MLflow via Docker Compose
+- [ ] Pipeline exploratório no notebook: amostras TerraClass → cubo BDC → treino → classificação
 - [ ] Logging completo de métricas de validação (acurácia, kappa) no MLflow
 - [ ] Ampliar período/bandas do cubo após validação em área pequena
 - [ ] Refatorar células validadas para o pacote `mlops_lulc/`
