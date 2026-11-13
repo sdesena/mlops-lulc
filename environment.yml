@@ -27,7 +27,7 @@ dependencies:
   # manipulacao geoespacial e analise de dados
   - geopandas
   - rasterio
-  - pandas
+  - pandas >=2.2,<3
   - matplotlib
   - seaborn
   - numpy =2.0.2
